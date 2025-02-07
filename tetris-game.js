@@ -3,7 +3,7 @@ const TetrisGame = {
         <div class="game-container">
             <!-- 开始界面 -->
             <div v-if="!gameStarted" class="start-screen">
-                <h1>俄罗斯方块</h1>
+                <h1>惘三和YC方块</h1>
                 <div class="difficulty-select">
                     <label>选择难度：</label>
                     <select v-model="selectedLevel">
@@ -16,16 +16,23 @@ const TetrisGame = {
                     <p>← → 键：左右移动</p>
                     <p>↑ 键：旋转方块</p>
                     <p>↓ 键：加速下落</p>
+                    <p>空格 键：游戏暂停</p>
                 </div>
             </div>
 
             <!-- 游戏界面 -->
             <div v-else class="game-screen">
+                <div class="game-background"></div> <!-- 新增背景层 -->
                 <div class="game-info">
                     <div>得分：{{ score }}</div>
                     <div>等级：{{ levels[selectedLevel].label }}</div>
                     <div>下一个：</div>
                     <canvas ref="nextCanvas" width="100" height="100"></canvas>
+                    <!-- 添加暂停状态显示 -->
+                    <div v-if="isPaused" class="pause-overlay">
+                        <div class="pause-text">游戏已暂停</div>
+                        <div class="pause-tip">按空格键继续</div>
+                    </div>
                 </div>
                 <canvas ref="gameCanvas" :width="canvasWidth" :height="canvasHeight"></canvas>
             </div>
@@ -34,14 +41,18 @@ const TetrisGame = {
 
     data() {
         return {
-            
 
+            isPaused: false, // 新增暂停状态
+             // 新增移动控制参数
+            lastMoveTime: 0,
+            moveInterval: 100, // 移动间隔时间（毫秒）
+            // 其他数据保持不变...
             gameStarted: false,
             selectedLevel: 0,
             levels: [
-                { label: '简单', interval: 1000 },
-                { label: '普通', interval: 700 },
-                { label: '困难', interval: 400 }
+                { label: '不如人机', interval: 800 },
+                { label: '人机', interval: 600 },
+                { label: '拟人', interval: 300 },
             ],
             // 游戏参数
             canvasWidth: 300,
@@ -62,8 +73,6 @@ const TetrisGame = {
                 ArrowDown: false,
                 ArrowUp: false
             },
-            lastMoveTime: 0, // 记录上次左右移动的时间戳
-            moveInterval: 1000 // 设置左右移动的最小间隔（毫秒）
         }
     },
 
@@ -115,7 +124,7 @@ const TetrisGame = {
             return [
                 { // I
                     shape: [[1,1,1,1]],
-                    color: '#00f0f0'
+                    color: '#00f0f0',
                 },
                 { // O
                     shape: [[1,1],[1,1]],
@@ -146,6 +155,10 @@ const TetrisGame = {
 
         // 游戏主循环
         gameLoop(timestamp) {
+            if (!this.gameStarted || this.isPaused) { // 添加暂停判断
+                requestAnimationFrame(this.gameLoop)
+                return
+            }
             if (!this.gameStarted) return
 
             const ctx = this.$refs.gameCanvas.getContext('2d')
@@ -171,10 +184,29 @@ const TetrisGame = {
             if (this.currentPiece) {
                 this.drawPiece(ctx, this.currentPiece)
                 // 绘制下一个方块
-                this.drawPiece(nextCtx, this.nextPiece, 20, 20)
+                // this.drawPiece(nextCtx, this.nextPiece, 50, 50)
+            }
+            // 绘制下一个方块（添加居中逻辑）
+            if (this.nextPiece) {
+                const nextBlockSize = 15 // 预览方块尺寸
+                const shapeWidth = this.nextPiece.shape[0].length * nextBlockSize
+                const shapeHeight = this.nextPiece.shape.length * nextBlockSize
+                const offsetX = (100 - shapeWidth) / 2
+                const offsetY = (100 - shapeHeight) / 2
+                this.drawNextPiece(nextCtx, this.nextPiece, offsetX, offsetY, nextBlockSize)
             }
 
             requestAnimationFrame(this.gameLoop)
+        },
+                // 新增暂停方法
+        togglePause() {
+            if (this.gameStarted) {
+                this.isPaused = !this.isPaused
+                if (!this.isPaused) {
+                    this.lastDrop = performance.now() // 重置下落计时
+                    requestAnimationFrame(this.gameLoop)
+                }
+            }
         },
 
         // 绘制方块
@@ -194,6 +226,23 @@ const TetrisGame = {
             })
         },
 
+                // 绘制下一个图标方法（添加缩放功能）
+                drawNextPiece(ctx, piece, offsetX = 0, offsetY = 0, blockSize = null) {
+                    const size = blockSize || this.blockSize
+                    ctx.fillStyle = piece.color
+                    piece.shape.forEach((row, y) => {
+                        row.forEach((value, x) => {
+                            if (value) {
+                                ctx.fillRect(
+                                    x * size + offsetX,
+                                    y * size + offsetY,
+                                    size - 1,
+                                    size - 1
+                                )
+                            }
+                        })
+                    })
+                },
         // 绘制地图
         drawMap(ctx) {
             this.gameMap.forEach((row, y) => {
@@ -221,16 +270,26 @@ const TetrisGame = {
             }
         },
 
-        // 移动处理
+        // 修改后的移动处理（添加移动间隔控制）
         handleMovement() {
+            const now = Date.now()
             if (this.keys.ArrowLeft && this.canMove(-1, 0)) {
-                this.currentPiece.x--
+                if (now - this.lastMoveTime > this.moveInterval) {
+                    this.currentPiece.x--
+                    this.lastMoveTime = now
+                }
             }
             if (this.keys.ArrowRight && this.canMove(1, 0)) {
-                this.currentPiece.x++
+                if (now - this.lastMoveTime > this.moveInterval) {
+                    this.currentPiece.x++
+                    this.lastMoveTime = now
+                }
             }
             if (this.keys.ArrowDown && this.canMove(0, 1)) {
-                this.moveDown()
+                if (now - this.lastMoveTime > this.moveInterval/10) {
+                this.currentPiece.y++
+                this.lastMoveTime = now
+            }
             }
             if (this.keys.ArrowUp) {
                 this.rotatePiece()
@@ -314,11 +373,18 @@ const TetrisGame = {
         spawnNewPiece() {
             this.currentPiece = this.nextPiece || this.createNewPiece()
             this.nextPiece = this.createNewPiece()
+            
+            // 立即检测是否碰撞（触顶判定）
+            if (!this.canMove(0, 0)) {
+                this.gameOver()
+            }
         },
 
         // 游戏开始
         startGame() {
             this.gameStarted = true
+            this.isPaused = false // 重置暂停状态
+            // 原有逻辑保持不变...
             this.initGameMap()
             this.score = 0
             this.spawnNewPiece()
@@ -329,19 +395,29 @@ const TetrisGame = {
         // 游戏结束
         gameOver() {
             this.gameStarted = false
-            alert(`游戏结束！得分：${this.score}`)
+            this.isPaused = false
+            // 原有逻辑保持不变...
+            alert(`可爱捏，有一个笨蛋鸡只拿了：${this.score}分` )
         },
 
         // 按键处理
         handleKeyDown(e) {
-            if (this.keys.hasOwnProperty(e.key)) {
+            // if (this.keys.hasOwnProperty(e.key)) {
+            //     this.keys[e.key] = true
+            //     e.preventDefault()
+            // }
+            if (e.code === 'Space') { // 空格键处理
+                this.togglePause()
+                e.preventDefault()
+            }
+            else if (this.keys.hasOwnProperty(e.key) && !this.isPaused) { // 暂停时禁用其他操作
                 this.keys[e.key] = true
                 e.preventDefault()
             }
         },
 
         handleKeyUp(e) {
-            if (this.keys.hasOwnProperty(e.key)) {
+            if (this.keys.hasOwnProperty(e.key) && !this.isPaused) { // 暂停时禁用其他操作
                 this.keys[e.key] = false
             }
         }
