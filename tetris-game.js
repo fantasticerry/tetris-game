@@ -31,7 +31,7 @@ const TetrisGame = {
                     <!-- 添加暂停状态显示 -->
                     <div v-if="isPaused" class="pause-overlay">
                         <div class="pause-text">游戏已暂停</div>
-                        <div class="pause-tip">按空格键继续</div>
+                        <div class="pause-tip">按空格键继续吧孩子，再暂停也拦不住寄的命运</div>
                     </div>
                 </div>
                 <canvas ref="gameCanvas" :width="canvasWidth" :height="canvasHeight"></canvas>
@@ -124,31 +124,31 @@ const TetrisGame = {
             return [
                 { // I
                     shape: [[1,1,1,1]],
-                    color: '#00f0f0',
+                    color: 'rgba(0, 255, 255, 0.59)',
                 },
                 { // O
                     shape: [[1,1],[1,1]],
-                    color: '#f0f000'
+                    color: 'rgba(255, 255, 0, 0.59)'
                 },
                 { // T
                     shape: [[0,1,0],[1,1,1]],
-                    color: '#a000f0'
+                    color: 'rgba(255, 0, 255, 0.59)'
                 },
                 { // L
                     shape: [[1,0],[1,0],[1,1]],
-                    color: '#f0a000'
+                    color: 'rgba(255, 165, 0, 0.59)'
                 },
                 { // J
                     shape: [[0,1],[0,1],[1,1]],
-                    color: '#0000f0'
+                    color: 'rgba(0, 0, 255, 0.59)'
                 },
                 { // S
                     shape: [[0,1,1],[1,1,0]],
-                    color: '#00f000'
+                    color: 'rgba(0, 255, 0, 0.59)'
                 },
                 { // Z
                     shape: [[1,1,0],[0,1,1]],
-                    color: '#f00000'
+                    color: 'rgba(255, 0, 0, 0.59)'
                 }
             ]
         },
